@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture du formulaire hybride</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground: #eceff4;
+    --surface: #ffffff;
+    --surface-2: #f5f7fa;
+    --ink: #16202b;
+    --ink-2: #4a5867;
+    --ink-3: #7b8899;
+    --rule: #d3dae3;
+    --rule-soft: #e3e8ef;
+    --accent: #0d6e7d;
+    --accent-soft: #e2f1f3;
+    --warn: #9a5b12;
+    --warn-soft: #f8efe2;
+
+    --measure: 66ch;
+    --pad: clamp(20px, 4vw, 44px);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #10161d;
+      --surface: #182029;
+      --surface-2: #1e2831;
+      --ink: #e6ebf1;
+      --ink-2: #a9b6c4;
+      --ink-3: #7d8b9a;
+      --rule: #2c3843;
+      --rule-soft: #242f39;
+      --accent: #4fc3d4;
+      --accent-soft: #14323a;
+      --warn: #d9a35c;
+      --warn-soft: #2e2519;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #10161d;
+    --surface: #182029;
+    --surface-2: #1e2831;
+    --ink: #e6ebf1;
+    --ink-2: #a9b6c4;
+    --ink-3: #7d8b9a;
+    --rule: #2c3843;
+    --rule-soft: #242f39;
+    --accent: #4fc3d4;
+    --accent-soft: #14323a;
+    --warn: #d9a35c;
+    --warn-soft: #2e2519;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 400 16px/1.6 "IBM Plex Sans", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: clamp(32px, 6vw, 72px) var(--pad) 96px;
+  }
+
+  header.masthead {
+    display: grid;
+    gap: 14px;
+    padding-bottom: 28px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 44px;
+  }
+
+  .kicker {
+    font: 500 12px/1 "IBM Plex Mono", monospace;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  h1 {
+    margin: 0;
+    font: 700 clamp(30px, 5vw, 46px)/1.08 "Archivo", system-ui, sans-serif;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    max-width: var(--measure);
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 1.06rem;
+  }
+
+  h2 {
+    margin: 0 0 6px;
+    font: 600 clamp(19px, 2.4vw, 24px)/1.2 "Archivo", system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    margin: 0 0 6px;
+    font: 600 15px/1.3 "Archivo", system-ui, sans-serif;
+  }
+
+  section { margin-top: 56px; }
+
+  .section-intro {
+    max-width: var(--measure);
+    margin: 0 0 24px;
+    color: var(--ink-2);
+  }
+
+  p { margin: 0 0 14px; }
+  p:last-child { margin-bottom: 0; }
+
+  code, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.88em;
+  }
+
+  code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--surface-2);
+    border: 1px solid var(--rule-soft);
+  }
+
+  figure {
+    margin: 0;
+    padding: clamp(16px, 3vw, 28px);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+  }
+
+  .scroll-x { overflow-x: auto; }
+
+  svg.diagram {
+    display: block;
+    width: 100%;
+    min-width: 640px;
+    max-width: 100%;
+    height: auto;
+    color: var(--ink);
+  }
+
+  figcaption {
+    max-width: var(--measure);
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule-soft);
+    color: var(--ink-2);
+    font-size: 0.92rem;
+  }
+
+  /* diagram primitives */
+  .node-box { fill: var(--surface-2); stroke: var(--rule); stroke-width: 1.5; }
+  .node-title { font: 600 14px "Archivo", sans-serif; fill: var(--ink); }
+  .node-line { font: 400 11.5px "IBM Plex Mono", monospace; fill: var(--ink-2); }
+  .lane-tag { font: 500 10px "IBM Plex Mono", monospace; fill: var(--ink-3); letter-spacing: 0.1em; }
+  .flow { stroke: currentColor; stroke-width: 1.6; fill: none; }
+  .flow-label { font: 500 11px "IBM Plex Mono", monospace; fill: var(--ink); }
+  .stream { stroke: var(--accent); stroke-width: 1.8; fill: none; stroke-dasharray: 6 4; }
+  .stream-label { font: 500 11px "IBM Plex Mono", monospace; fill: var(--accent); }
+  .boundary { stroke: var(--ink-3); stroke-width: 1.2; stroke-dasharray: 3 4; opacity: 0.75; }
+  .boundary-label { font: 500 10px "IBM Plex Mono", monospace; fill: var(--ink-3); letter-spacing: 0.06em; }
+  .step-box { fill: var(--surface-2); stroke: var(--rule); stroke-width: 1.5; }
+  .step-note { fill: var(--warn-soft); stroke: var(--warn); stroke-width: 1.5; }
+  .step-num { font: 500 11px "IBM Plex Mono", monospace; fill: var(--ink-3); }
+  .step-text { font: 400 13px "IBM Plex Sans", sans-serif; fill: var(--ink); }
+  .step-text-mono { font: 400 12px "IBM Plex Mono", monospace; fill: var(--ink-2); }
+  .note-text { font: 500 13px "IBM Plex Sans", sans-serif; fill: var(--warn); }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 26px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule-soft);
+    font: 500 12px "IBM Plex Mono", monospace;
+    color: var(--ink-2);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 9px; }
+  .swatch { width: 30px; height: 0; border-top: 2px solid currentColor; }
+  .swatch.dashed { border-top-style: dashed; color: var(--accent); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  th {
+    font: 500 11px "IBM Plex Mono", monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    border-bottom: 1px solid var(--rule);
+  }
+  td:first-child { white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: 0; }
+
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow-x: auto;
+  }
+
+  .cards {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  }
+
+  .card {
+    padding: 20px 22px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+  }
+  .card.is-warn { border-left-color: var(--warn); }
+  .card p { color: var(--ink-2); font-size: 0.93rem; }
+  .card p:first-of-type { margin-top: 2px; }
+
+  .payloads {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+  pre {
+    margin: 0;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--ink-2);
+  }
+  pre b { color: var(--ink); font-weight: 500; }
+  .dir {
+    font: 500 11px "IBM Plex Mono", monospace;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  footer {
+    margin-top: 72px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    color: var(--ink-3);
+    font-size: 0.86rem;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+<style>
+  /* Print / PDF always resolves light, whatever the viewer's OS theme.
+     The three selectors mirror the dark-theme ones so specificity can't
+     let a dark token win here — a plain :root block would lose to
+     :root:not([data-theme="light"]). */
+  @page { size: A4; margin: 14mm 12mm; }
+  @media print {
+    :root,
+    :root:not([data-theme="light"]),
+    :root[data-theme="dark"] {
+      --ground: #ffffff;
+      --surface: #ffffff;
+      --surface-2: #f6f8fa;
+      --ink: #16202b;
+      --ink-2: #45535f;
+      --ink-3: #6b7787;
+      --rule: #c9d2dc;
+      --rule-soft: #e2e8ef;
+      --accent: #0b6070;
+      --accent-soft: #e2f1f3;
+      --warn: #8a5210;
+      --warn-soft: #f9f1e4;
+    }
+    body { background: #fff; }
+    .page { max-width: none; padding: 0; }
+    figure, .card, .table-wrap, .payloads > div { break-inside: avoid; page-break-inside: avoid; }
+    h2 { break-after: avoid; page-break-after: avoid; }
+    svg.diagram { min-width: 0; }
+    .scroll-x, .table-wrap, pre { overflow: visible; }
+    pre { white-space: pre-wrap; word-break: break-word; }
+    footer { break-before: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <p class="kicker">Preuve de concept</p>
+    <h1>Formulaire de contact hybride sur la Chat API Botpress</h1>
+    <p class="standfirst">
+      Une page centrée sur le formulaire, où un LLM décide de la question suivante et
+      rédige la réponse. Botpress fournit la conversation et l'intelligence ; chaque
+      pixel reste le front-end du client. Voici comment les quatre parties dialoguent.
+    </p>
+  </header>
+
+  <section>
+    <h2>Les quatre parties</h2>
+    <p class="section-intro">
+      Rien ici n'est un widget de chat. La page possède sa propre interface et dialogue
+      avec un petit serveur Node, seul à détenir le webhook ID et seul à parler à Botpress.
+    </p>
+
+    <figure>
+      <div class="scroll-x">
+        <svg class="diagram" viewBox="0 0 1100 400" role="img"
+             aria-label="Quatre composants de gauche à droite : la page navigateur, un serveur Node, la Chat API Botpress et le runtime du bot. Le navigateur et le serveur échangent des POST HTTP et un flux server-sent. Le serveur et la Chat API échangent des appels createMessage et un flux de signals. La Chat API distribue les messages au bot, qui répond par chat:sendEvent. Une frontière de confiance sépare le navigateur du serveur.">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,1 L9,5 L0,9 z" fill="currentColor"></path>
+            </marker>
+            <marker id="ah-accent" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,1 L9,5 L0,9 z" fill="var(--accent)"></path>
+            </marker>
+          </defs>
+
+          <!-- lane tags -->
+          <text class="lane-tag" x="115" y="40" text-anchor="middle">CLIENT</text>
+          <text class="lane-tag" x="405" y="40" text-anchor="middle">VOTRE SITE</text>
+          <text class="lane-tag" x="840" y="40" text-anchor="middle">BOTPRESS</text>
+
+          <!-- boxes -->
+          <rect class="node-box" x="20" y="120" width="190" height="150" rx="8"></rect>
+          <text class="node-title" x="115" y="152" text-anchor="middle">Page navigateur</text>
+          <text class="node-line" x="115" y="180" text-anchor="middle">Alpine.js (CDN)</text>
+          <text class="node-line" x="115" y="200" text-anchor="middle">timeline + dock</text>
+          <text class="node-line" x="115" y="220" text-anchor="middle">EventSource</text>
+          <text class="node-line" x="115" y="246" text-anchor="middle">aucun SDK bot</text>
+
+          <rect class="node-box" x="310" y="120" width="190" height="150" rx="8"></rect>
+          <text class="node-title" x="405" y="152" text-anchor="middle">Node / Express</text>
+          <text class="node-line" x="405" y="180" text-anchor="middle">@botpress/chat</text>
+          <text class="node-line" x="405" y="200" text-anchor="middle">sessions Map</text>
+          <text class="node-line" x="405" y="220" text-anchor="middle">reconnexion</text>
+          <text class="node-line" x="405" y="246" text-anchor="middle">détient WEBHOOK_ID</text>
+
+          <rect class="node-box" x="600" y="120" width="190" height="150" rx="8"></rect>
+          <text class="node-title" x="695" y="152" text-anchor="middle">Chat API</text>
+          <text class="node-line" x="695" y="180" text-anchor="middle">chat.botpress.cloud</text>
+          <text class="node-line" x="695" y="200" text-anchor="middle">conversation</text>
+          <text class="node-line" x="695" y="220" text-anchor="middle">messages</text>
+          <text class="node-line" x="695" y="246" text-anchor="middle">signals</text>
+
+          <rect class="node-box" x="890" y="120" width="190" height="150" rx="8"></rect>
+          <text class="node-title" x="985" y="152" text-anchor="middle">Runtime du bot</text>
+          <text class="node-line" x="985" y="180" text-anchor="middle">Autonomous Node</text>
+          <text class="node-line" x="985" y="200" text-anchor="middle">un seul outil :</text>
+          <text class="node-line" x="985" y="220" text-anchor="middle">Send Custom Event</text>
+          <text class="node-line" x="985" y="246" text-anchor="middle">le LLM décide</text>
+
+          <!-- trust boundary -->
+          <line class="boundary" x1="260" y1="100" x2="260" y2="300"></line>
+          <text class="boundary-label" x="260" y="92" text-anchor="middle">frontière de confiance</text>
+
+          <!-- gap 1 : browser <-> node -->
+          <line class="flow" x1="212" y1="168" x2="306" y2="168" marker-end="url(#ah)"></line>
+          <text class="flow-label" x="259" y="160" text-anchor="middle">POST</text>
+          <line class="stream" x1="306" y1="232" x2="212" y2="232" marker-end="url(#ah-accent)"></line>
+          <text class="stream-label" x="259" y="252" text-anchor="middle">SSE</text>
+
+          <!-- gap 2 : node <-> chat api -->
+          <line class="flow" x1="502" y1="168" x2="596" y2="168" marker-end="url(#ah)"></line>
+          <text class="flow-label" x="549" y="160" text-anchor="middle">createMessage</text>
+          <line class="stream" x1="596" y1="232" x2="502" y2="232" marker-end="url(#ah-accent)"></line>
+          <text class="stream-label" x="549" y="252" text-anchor="middle">signals</text>
+
+          <!-- gap 3 : chat api <-> bot -->
+          <line class="flow" x1="792" y1="168" x2="886" y2="168" marker-end="url(#ah)"></line>
+          <text class="flow-label" x="839" y="160" text-anchor="middle">dispatch</text>
+          <line class="flow" x1="886" y1="232" x2="792" y2="232" marker-end="url(#ah)"></line>
+          <text class="flow-label" x="839" y="252" text-anchor="middle">sendEvent</text>
+
+          <!-- what rides each direction -->
+          <text class="node-line" x="115" y="322" text-anchor="middle">affiche form_step</text>
+          <text class="node-line" x="405" y="322" text-anchor="middle">relaie dans les deux sens</text>
+          <text class="node-line" x="695" y="322" text-anchor="middle">détient le fil</text>
+          <text class="node-line" x="985" y="322" text-anchor="middle">écrit le payload</text>
+        </svg>
+      </div>
+
+      <div class="legend">
+        <span><i class="swatch"></i> HTTP ponctuel</span>
+        <span><i class="swatch dashed"></i> flux persistant (server-sent)</span>
+      </div>
+
+      <figcaption>
+        Deux flux persistants distincts, et non un seul. Le navigateur maintient un
+        <code>EventSource</code> vers le serveur Node ; le serveur maintient de son côté un
+        flux de signals Botpress par conversation. L'un peut tomber sans que l'autre le
+        sache, d'où une reprise propre à chaque extrémité. Le webhook ID ne vit qu'à droite
+        de la frontière de confiance — la page ne pourrait pas joindre Botpress directement
+        même en essayant.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Réveiller le bot</h2>
+    <p class="section-intro">
+      La partie la moins évidente de la conception, et celle qui piégera quiconque la
+      reconstruira. Créer une conversation ne la démarre pas.
+    </p>
+
+    <figure>
+      <div class="scroll-x">
+        <svg class="diagram" viewBox="0 0 700 520" role="img"
+             aria-label="Séquence d'amorçage en six étapes : le chargement de la page appelle l'endpoint de session ; le serveur se connecte, crée une conversation et ouvre un listener de signals ; à ce stade le bot dort encore car la Chat API n'a pas d'événement conversationStarted ; le serveur envoie donc un message sentinelle ; le bot se réveille et appelle chat:sendEvent avec un form_step ; le signal arrive via SSE et le premier formulaire s'affiche.">
+          <defs>
+            <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,1 L9,5 L0,9 z" fill="currentColor"></path>
+            </marker>
+          </defs>
+
+          <rect class="step-box" x="40" y="20" width="620" height="56" rx="8"></rect>
+          <text class="step-num" x="62" y="45">01</text>
+          <text class="step-text" x="98" y="45">La page se charge</text>
+          <text class="step-text-mono" x="98" y="63">POST /api/session</text>
+          <line class="flow" x1="350" y1="76" x2="350" y2="96" marker-end="url(#ah2)"></line>
+
+          <rect class="step-box" x="40" y="100" width="620" height="56" rx="8"></rect>
+          <text class="step-num" x="62" y="125">02</text>
+          <text class="step-text" x="98" y="125">Le serveur ouvre la conversation</text>
+          <text class="step-text-mono" x="98" y="143">connect() · createConversation() · listenConversation()</text>
+          <line class="flow" x1="350" y1="156" x2="350" y2="176" marker-end="url(#ah2)"></line>
+
+          <rect class="step-note" x="40" y="180" width="620" height="56" rx="8"></rect>
+          <text class="step-num" x="62" y="205">✕</text>
+          <text class="note-text" x="98" y="205">Le bot dort encore</text>
+          <text class="step-text-mono" x="98" y="223">la Chat API n'a pas d'événement conversationStarted</text>
+          <line class="flow" x1="350" y1="236" x2="350" y2="256" marker-end="url(#ah2)"></line>
+
+          <rect class="step-box" x="40" y="260" width="620" height="56" rx="8"></rect>
+          <text class="step-num" x="62" y="285">03</text>
+          <text class="step-text" x="98" y="285">Le serveur envoie un message sentinelle</text>
+          <text class="step-text-mono" x="98" y="303">createMessage({ text: '{"__start":true}' })</text>
+          <line class="flow" x1="350" y1="316" x2="350" y2="336" marker-end="url(#ah2)"></line>
+
+          <rect class="step-box" x="40" y="340" width="620" height="56" rx="8"></rect>
+          <text class="step-num" x="62" y="365">04</text>
+          <text class="step-text" x="98" y="365">Le bot se réveille, le LLM construit la 1re étape</text>
+          <text class="step-text-mono" x="98" y="383">chat:sendEvent({ conversationId, payload: form_step })</text>
+          <line class="flow" x1="350" y1="396" x2="350" y2="416" marker-end="url(#ah2)"></line>
+
+          <rect class="step-box" x="40" y="420" width="620" height="56" rx="8"></rect>
+          <text class="step-num" x="62" y="445">05</text>
+          <text class="step-text" x="98" y="445">Signal relayé, le premier formulaire s'affiche</text>
+          <text class="step-text-mono" x="98" y="463">event_created → SSE → Alpine affiche les champs</text>
+        </svg>
+      </div>
+      <figcaption>
+        Chaque tour suivant répète les étapes 03 à 05 : la page envoie les réponses du client
+        sous forme de message, le bot répond par un nouveau <code>form_step</code>. Le message
+        sentinelle n'existe que parce que l'étape 02 laisse le bot inactif — sans événement
+        <code>conversationStarted</code> sur la Chat API, une conversation sans message
+        n'atteint jamais le bot.
+      </figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>Ce qui circule</h2>
+    <p class="section-intro">
+      Un seul type de message dans chaque sens porte toute l'interaction. Le payload du bot
+      est l'instruction d'affichage de la page ; celui de la page est du JSON brut dans un
+      corps de message.
+    </p>
+
+    <div class="payloads">
+      <div>
+        <span class="dir">Bot → page · event_created</span>
+        <pre><b>{</b>
+  <b>"type"</b>: "form_step",
+  <b>"title"</b>: "Notre réponse",
+  <b>"done"</b>: false,
+  <b>"fields"</b>: [ … ],      <span style="opacity:.7">// formulaire à afficher</span>
+  <b>"answer"</b>: "…",        <span style="opacity:.7">// réponse rédigée</span>
+  <b>"links"</b>: [ … ],       <span style="opacity:.7">// liste blanche uniquement</span>
+  <b>"choices"</b>: [ … ]      <span style="opacity:.7">// résoudre / escalader</span>
+<b>}</b></pre>
+      </div>
+      <div>
+        <span class="dir">Page → bot · texte du message</span>
+        <pre><span style="opacity:.7">// réponses au formulaire courant</span>
+<b>{</b> "name": "…", "topic": "Annulation" <b>}</b>
+
+<span style="opacity:.7">// complément en texte libre</span>
+<b>{</b> "followUp": "…" <b>}</b>
+
+<span style="opacity:.7">// décision du client</span>
+<b>{</b> "choice": "resolved" | "human" <b>}</b></pre>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Endpoints du serveur</h2>
+    <p class="section-intro">
+      Quatre routes, toutes liées à une session. Le serveur est un relais doté d'un cycle
+      de vie, pas une application.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Route</th><th>Rôle</th><th>Appel Botpress</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>POST /api/session</code></td>
+            <td>Ouvre une conversation, démarre le listener de signals, envoie le sentinelle</td>
+            <td class="mono">connect · createConversation · listenConversation · createMessage</td>
+          </tr>
+          <tr>
+            <td><code>GET /api/stream/:id</code></td>
+            <td>SSE vers le navigateur ; relaie les messages du bot et les événements <code>form_step</code></td>
+            <td class="mono">— (relais seul)</td>
+          </tr>
+          <tr>
+            <td><code>POST /api/answers/:id</code></td>
+            <td>Envoie les réponses, un complément ou un choix en un seul message</td>
+            <td class="mono">createMessage</td>
+          </tr>
+          <tr>
+            <td><code>POST /api/session/:id/end</code></td>
+            <td>Détruit la session au redémarrage</td>
+            <td class="mono">listener.disconnect</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Les points porteurs</h2>
+    <p class="section-intro">
+      Chacun a été découvert en le cassant. Ils ressemblent à des détails et se comportent
+      comme des exigences.
+    </p>
+
+    <div class="cards">
+      <div class="card">
+        <h3>Le Conversation ID doit être en Manual</h3>
+        <p>
+          L'outil Send Custom Event place son Conversation ID sur <em>Let AI Decide</em> par
+          défaut. Ainsi, le LLM émet <code>conversation.id</code>, indéfini dans le sandbox, et
+          chaque appel échoue. Passez-le en Manual avec
+          <code>{{event.conversationId}}</code>.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>Les deux flux ont besoin d'une reprise</h3>
+        <p>
+          Le <span class="mono">SignalListener</span> de Botpress a un watchdog de 60 secondes
+          et aucune reprise propre — or une personne qui remplit un formulaire reste silencieuse
+          bien plus longtemps. Le serveur se reconnecte ; les sessions sans navigateur attaché
+          sont détruites après deux minutes.
+        </p>
+      </div>
+
+      <div class="card is-warn">
+        <h3>La liste blanche de liens</h3>
+        <p>
+          Le bot ne peut émettre que des URL figurant dans une liste fixe de ses instructions,
+          et jamais une URL brute dans le texte de la réponse. Sans cela, il invente des chemins
+          plausibles.
+        </p>
+      </div>
+
+      <div class="card is-warn">
+        <h3>L'escalade appartient au client</h3>
+        <p>
+          Il est interdit au bot d'annoncer qu'une demande est transférée ou qu'un conseiller
+          confirmera. Anticiper le second bouton rend la réponse rédigée inutile — c'est la seule
+          chose que le client peut déjà faire sans lui.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Preuve de concept — pas de production. L'identité repose sur une authentification anonyme
+    automatique plutôt que sur les clés de session membre, les sessions vivent en mémoire du
+    processus, et la reprise Zendesk n'est pas câblée. Les identifiants de bot et de webhook
+    sont volontairement omis de cette page.
+  </footer>
+
+</div>
+</body>
+</html>

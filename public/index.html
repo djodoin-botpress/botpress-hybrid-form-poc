@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nous contacter</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <!-- app.js must come first: it registers the alpine:init listener, and the
+         Alpine CDN build starts as soon as it executes. -->
+    <script defer src="/app.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+  </head>
+
+  <body>
+    <main class="shell" x-data="hybridForm">
+      <header class="shell__header">
+        <p class="eyebrow">Service client</p>
+        <h1 x-text="title">Nous contacter</h1>
+        <p class="lede">
+          Répondez à quelques questions — elles s'adaptent à votre demande pour
+          éviter les allers-retours.
+        </p>
+      </header>
+
+      <section
+        class="panel"
+        :class="{ 'panel--chat': timeline.length, 'is-busy': busy }"
+        aria-live="polite"
+      >
+        <!-- Boot / error states -->
+        <template x-if="error">
+          <div class="panel__pad">
+            <p class="notice notice--error" x-text="error"></p>
+            <button type="button" class="submit submit--ghost restart" @click="restart()">
+              Recommencer
+            </button>
+          </div>
+        </template>
+
+        <template x-if="!error && !ready">
+          <p class="notice panel__pad">Chargement du formulaire…</p>
+        </template>
+
+        <!-- The conversation so far. Scrolls; the action bar below never moves. -->
+        <div class="timeline" x-ref="timeline" x-show="timeline.length || busy" x-cloak>
+          <template x-for="entry in timeline" :key="entry.id">
+            <div class="entry" :class="'entry--' + entry.role">
+              <p class="entry__text" x-text="entry.text"></p>
+              <div class="entry__links" x-show="entry.links.length">
+                <template x-for="link in entry.links" :key="link.url">
+                  <a
+                    class="entry__link"
+                    :href="link.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <span x-text="link.label"></span>
+                    <span aria-hidden="true">→</span>
+                  </a>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <p class="entry__thinking" x-show="busy" x-cloak>
+            <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span x-text="thinkingText"></span>
+          </p>
+        </div>
+
+        <!-- Pinned to the bottom: the form, or the two decisions plus the reply box -->
+        <!-- Hidden while waiting: clearing the fields on submit would otherwise
+             leave an empty bordered strip at the bottom. -->
+        <div class="dock" x-show="ready && !done && (fields.length || choices.length)" x-cloak>
+          <template x-if="fields.length">
+            <form class="form" @submit.prevent="submit()">
+              <template x-for="field in fields" :key="field.id">
+                <div class="field">
+                  <label class="field__label" :for="field.id" x-text="field.label"></label>
+
+                  <template x-if="field.type === 'textarea'">
+                    <textarea
+                      class="field__input"
+                      :id="field.id"
+                      rows="4"
+                      :placeholder="field.placeholder ?? ''"
+                      x-model="answers[field.id]"
+                    ></textarea>
+                  </template>
+
+                  <template x-if="field.type === 'select'">
+                    <select class="field__input" :id="field.id" x-model="answers[field.id]">
+                      <option value="" disabled>Choisissez…</option>
+                      <template x-for="option in field.options" :key="option">
+                        <option :value="option" x-text="option"></option>
+                      </template>
+                    </select>
+                  </template>
+
+                  <template x-if="!['textarea', 'select'].includes(field.type)">
+                    <input
+                      class="field__input"
+                      :id="field.id"
+                      :type="field.type === 'email' ? 'email' : 'text'"
+                      :placeholder="field.placeholder ?? ''"
+                      x-model="answers[field.id]"
+                    />
+                  </template>
+                </div>
+              </template>
+
+              <button class="submit" type="submit" :disabled="busy">Continuer</button>
+            </form>
+          </template>
+
+          <template x-if="choices.length">
+            <div class="dock__actions">
+              <div class="dock__choices">
+                <template x-for="(choice, index) in choices" :key="choice.id">
+                  <button
+                    type="button"
+                    class="submit"
+                    :class="index === 0 ? 'submit--primary' : 'submit--ghost'"
+                    :disabled="busy"
+                    @click="choose(choice.id)"
+                    x-text="choice.label"
+                  ></button>
+                </template>
+              </div>
+
+              <div class="composer">
+                <textarea
+                  class="field__input"
+                  rows="2"
+                  aria-label="Réponse complémentaire"
+                  placeholder="Écrivez votre réponse complémentaire ici..."
+                  x-model="followUp"
+                  :disabled="busy"
+                ></textarea>
+                <button
+                  type="button"
+                  class="submit submit--ghost"
+                  :disabled="busy || !followUp.trim()"
+                  @click="sendFollowUp()"
+                >
+                  Envoyer
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Closed -->
+        <div class="dock" x-show="done" x-cloak>
+          <div class="closed">
+            <p class="closed__mark" aria-hidden="true">✓</p>
+            <p class="closed__title" x-text="title">C'est noté</p>
+            <button type="button" class="submit submit--ghost" @click="restart()">
+              Faire une nouvelle demande
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

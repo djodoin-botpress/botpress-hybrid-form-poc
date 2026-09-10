@@ -12,6 +12,23 @@ if (!webhookId) {
   process.exit(1)
 }
 
+/**
+ * Stands in for what a real member session would hand the server: an identity
+ * plus the token the bot would use to call back into the CRM. Fake on purpose —
+ * nothing here is a credential.
+ *
+ * Carried on the Chat API user's `profile`, which is a single string capped at
+ * 1000 chars, so it goes over as JSON and the bot parses it back out.
+ */
+const buildDemoProfile = () => ({
+  memberId: 'MB-0000000',
+  name: 'Camille Durand',
+  email: 'camille.durand@example.com',
+  tier: 'gold',
+  locale: 'fr-FR',
+  sessionToken: `fake-${randomUUID()}`,
+})
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const app = express()
@@ -87,6 +104,13 @@ const attachListener = async (session) => {
 
 const openSession = async () => {
   const client = await chat.Client.connect({ webhookId })
+
+  // The bot reads this back with `client.getUser({ id: event.userId })` and
+  // `user.tags['chat:profile']` — there is no Get User Data card on the Chat API.
+  const profile = JSON.stringify(buildDemoProfile())
+  await client.updateUser({ profile })
+  console.log('[session] profile attached (%d chars)', profile.length)
+
   const { conversation } = await client.createConversation({})
 
   const session = {

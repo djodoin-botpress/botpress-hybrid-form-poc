@@ -78,6 +78,35 @@ quite. The bot then closes with
 "Transmis à un conseiller"). The confirmation body is the assistant's own last line, so
 the closing text always matches what actually happened.
 
+### Member context on the user profile
+
+Right after `Client.connect()` the server attaches a fake member payload to the Chat API
+user:
+
+```json
+{
+  "memberId": "MB-0000000",
+  "name": "Camille Durand",
+  "email": "camille.durand@example.com",
+  "tier": "gold",
+  "locale": "fr-FR",
+  "sessionToken": "fake-<uuid>"
+}
+```
+
+`profile` is the Chat API's only per-user data slot — a single string, 1000 chars max,
+stored as the `chat:profile` user tag — so it goes over as JSON. There is no **Get User
+Data** Card on this channel; the bot reads it in an Execute Code Card:
+
+```js
+const { user } = await client.getUser({ id: event.userId })
+const member = JSON.parse(user.tags['chat:profile'] ?? '{}')
+```
+
+The token is fake and nothing consumes it — it stands in for what a real member session
+would hand the server. Under anonymous auto-auth the profile dies with the session, since
+the next page load mints a new user.
+
 ### Why the opening form is not generated
 
 The page renders the first form **locally and instantly**, from `OPENING_STEP` in
